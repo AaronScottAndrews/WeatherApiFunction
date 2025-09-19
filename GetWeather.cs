@@ -17,7 +17,7 @@ public class GetWeatherFunction
 
 	[Function("GetWeather")]
 	public async Task<HttpResponseData> Run(
-		[HttpTrigger(AuthorizationLevel.Function, "get", Route = "weather")] HttpRequestData req,
+		[HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "weather")] HttpRequestData req,
 		FunctionContext executionContext)
 	{
 		var logger = executionContext.GetLogger("GetWeather");
