@@ -1,9 +1,16 @@
+﻿## Azure Function for WeatherAPI.com
+
 This Azure function calls and returns data from WeatherAPI.com
 This was created because calling WeatherAPI directly from a chrome extention wasn't possible.
 
-For local testing add you WeatherApi key to “local.settings.json” file which is auto-generated when you create your HTTP trigger function app. 
+### `Local Testing`
 
-After deploying on Azure you will need to add the WeatherApiKey as an application setting. To do this in the Azure Portal:
+For local testing add you WeatherApi key to the “local.settings.json” file which is auto-generated when you create your HTTP trigger function app. 
+
+### `After Deployment`
+
+After deploying to Azure you will need to add the WeatherApiKey as an application setting.
+To do this in the Azure Portal:
 
 1. Login in and navigate to your function app
 
