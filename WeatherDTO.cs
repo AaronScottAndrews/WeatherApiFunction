@@ -8,9 +8,9 @@ namespace WeatherApiFunction
 {
 	internal class WeatherDTO
 	{
-		public string Location { get; set; }
+		public string? Location { get; set; }
 		public float TemperatureF { get; set; }
-		public string Condition { get; set; }
+		public string? Condition { get; set; }
 		public List<ForecastDayDTO> ForecastDays { get; set; } = new();
 	}
 
