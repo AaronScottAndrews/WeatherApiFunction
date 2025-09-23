@@ -24,7 +24,8 @@ namespace WeatherApiFunction
 			var logger = executionContext.GetLogger("GetWeather");
 			var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
 
-			var location = query["location"];
+			var location = query["location"];  // q=33.9561,-83.9881  or  q=lawrenceville
+
 			var apiKey = _config["WeatherApiKey"];
 
 			if (string.IsNullOrWhiteSpace(location))
@@ -76,13 +77,51 @@ namespace WeatherApiFunction
 
 			static WeatherDTO BuildDto(JsonElement root)
 			{
-				return new WeatherDTO
+				var dto = new WeatherDTO
 				{
 					Location = root.GetProperty("location").GetProperty("name").GetString() ?? string.Empty,
 					TemperatureF = root.GetProperty("current").GetProperty("temp_f").GetSingle(),
 					Condition = root.GetProperty("current").GetProperty("condition").GetProperty("text").GetString() ?? string.Empty
 				};
+
+				var forecastDays = root.GetProperty("forecast").GetProperty("forecastday");
+
+				foreach (var day in forecastDays.EnumerateArray())
+				{
+					var forecastDto = new ForecastDayDTO
+					{
+						Date = day.GetProperty("date").GetString() ?? string.Empty,
+						MaxTempF = day.GetProperty("day").GetProperty("maxtemp_f").GetSingle(),
+						MinTempF = day.GetProperty("day").GetProperty("mintemp_f").GetSingle(),
+						Condition = day.GetProperty("day").GetProperty("condition").GetProperty("text").GetString() ?? string.Empty,
+						IconUrl = "https:" + day.GetProperty("day").GetProperty("condition").GetProperty("icon").GetString() ?? string.Empty
+						//IconUrl = "https:" + condition.GetProperty("icon").GetString() ?? string.Empty
+					};
+
+					dto.ForecastDays.Add(forecastDto);
+				}
+
+				return dto;
 			}
+
+
+			//static WeatherDTO BuildDto(JsonElement root)
+			//{
+			//	return new WeatherDTO
+			//	{
+			//		Location = root.GetProperty("location").GetProperty("name").GetString() ?? string.Empty,
+			//		TemperatureF = root.GetProperty("current").GetProperty("temp_f").GetSingle(),
+			//		Condition = root.GetProperty("current").GetProperty("condition").GetProperty("text").GetString() ?? string.Empty
+			//		//Day2MaxTemp = root.GetProperty("forecast").GetProperty("forecastday").GetProperty("day").GetProperty("maxtemp_f").GetSingle(),
+			//		//Day2MinTemp = root.GetProperty("forecast").GetProperty("forecastday").GetProperty("day").GetProperty("mintemp_f").GetSingle(),
+			//		//Day2Condition = root.GetProperty("forecast").GetProperty("forecastday").GetProperty("day").GetProperty("condition").GetProperty("text").GetString() ?? string.Empty,
+			//	};
+			//}
+
+			//static ForecastDayDTO BuildForcastDto(JsonElement root)
+			//{
+
+			//}
 		}
 	}
 }
