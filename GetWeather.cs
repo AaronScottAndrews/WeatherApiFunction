@@ -1,63 +1,88 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
-public class GetWeatherFunction
+namespace WeatherApiFunction
 {
-	private readonly HttpClient _httpClient;
-	private readonly IConfiguration _config;
-
-	public GetWeatherFunction(IHttpClientFactory httpClientFactory, IConfiguration config)
+	public class GetWeatherFunction
 	{
-		_httpClient = httpClientFactory.CreateClient();
-		_config = config;
-	}
+		private readonly HttpClient _httpClient;
+		private readonly IConfiguration _config;
 
-	[Function("GetWeather")]
-	public async Task<HttpResponseData> Run(
-		[HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "weather")] HttpRequestData req,
-		FunctionContext executionContext)
-	{
-		var logger = executionContext.GetLogger("GetWeather");
-		var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-
-		var location = query["location"];
-		var apiKey = _config["WeatherApiKey"];
-
-		if (string.IsNullOrWhiteSpace(location))
+		public GetWeatherFunction(IHttpClientFactory httpClientFactory, IConfiguration config)
 		{
-			var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-			await badResponse.WriteStringAsync("Missing required 'location' query parameter.");
-			return badResponse;
+			_httpClient = httpClientFactory.CreateClient();
+			_config = config;
 		}
 
-		if (string.IsNullOrEmpty(apiKey))
+		[Function("GetWeather")]
+		public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "weather")] HttpRequestData req, FunctionContext executionContext)
 		{
-			var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-			await badResponse.WriteStringAsync("Missing WeatherApiKey in configuration.");
-			return badResponse;
-		}
+			var logger = executionContext.GetLogger("GetWeather");
+			var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
 
-		var url = $"http://api.weatherapi.com/v1/current.json?key={apiKey}&q={location}&aqi=no";
+			var location = query["location"];
+			var apiKey = _config["WeatherApiKey"];
 
-		try
-		{
-			var response = await _httpClient.GetAsync(url);
-			var content = await response.Content.ReadAsStringAsync();
+			if (string.IsNullOrWhiteSpace(location))
+			{
+				var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+				await badResponse.WriteStringAsync("Missing required 'location' query parameter.");
+				return badResponse;
+			}
 
-			var okResponse = req.CreateResponse(System.Net.HttpStatusCode.OK);
-			okResponse.Headers.Add("Content-Type", "application/json");
-			await okResponse.WriteStringAsync(content);
-			return okResponse;
-		}
-		catch (HttpRequestException ex)
-		{
-			logger.LogError($"Weather API call failed: {ex.Message}");
-			var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
-			await errorResponse.WriteStringAsync("Error calling weather API.");
-			return errorResponse;
+			if (string.IsNullOrEmpty(apiKey))
+			{
+				var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+				await badResponse.WriteStringAsync("Missing WeatherApiKey in configuration.");
+				return badResponse;
+			}
+
+			var url = $"http://api.weatherapi.com/v1/forecast.json?key={apiKey}&q={location}&days=3";
+
+			try
+			{
+				var response = await _httpClient.GetAsync(url);
+				var content = await response.Content.ReadAsStringAsync();
+
+				using var doc = JsonDocument.Parse(content);
+
+				var root = doc.RootElement;
+
+				WeatherDTO weatherForcast = BuildDto(root);
+
+				var filteredJson = JsonSerializer.Serialize(weatherForcast);
+
+				var okResponse = req.CreateResponse(System.Net.HttpStatusCode.OK);
+
+				okResponse.StatusCode = okResponse.StatusCode;
+
+				okResponse.Headers.Add("Content-Type", "application/json");
+
+				await okResponse.WriteStringAsync(filteredJson);
+
+				return okResponse;
+			}
+			catch (HttpRequestException ex)
+			{
+				logger.LogError($"Weather API call failed: {ex.Message}");
+				var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
+				await errorResponse.WriteStringAsync("Error calling weather API.");
+				return errorResponse;
+			}
+
+			static WeatherDTO BuildDto(JsonElement root)
+			{
+				return new WeatherDTO
+				{
+					Location = root.GetProperty("location").GetProperty("name").GetString() ?? string.Empty,
+					TemperatureF = root.GetProperty("current").GetProperty("temp_f").GetSingle(),
+					Condition = root.GetProperty("current").GetProperty("condition").GetProperty("text").GetString() ?? string.Empty
+				};
+			}
 		}
 	}
 }
