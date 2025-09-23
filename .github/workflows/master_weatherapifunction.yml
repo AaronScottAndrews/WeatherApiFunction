@@ -37,8 +37,9 @@ jobs:
         uses: Azure/functions-action@v1
         id: fa
         with:
-          app-name: 'weatherapi'
+          app-name: 'weatherapi-asa'
           slot-name: 'Production'
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
 
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5A0C80F4FC1D49EBA01024759DC38B17 }}
+
